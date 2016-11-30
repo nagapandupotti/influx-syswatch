@@ -1,0 +1,69 @@
+<div class="row">
+  <div class="col-md-12">
+    <div>
+      <div class="btn-group gap" role="group">
+        <button id="holt_initial" class="btn btn-default active" onclick="holt_click('udp_socket', 'UDP')">UDP Ports</button>
+        <button class="btn btn-default" onclick="holt_click('tcp_established', 'TCP')">TCP Ports</button>
+        <button class="btn btn-default" onclick="holt_click('mem', 'GB')">Free Memory</button>
+      </div>
+
+    </div>
+    <h2>Predictor</h2>
+    <div id="holt_chart" style="white-space: nowrap;">
+      <div id="prediction-loader"></div>
+      <%= erb :graph %>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+
+$('body').on('click', '.btn-group button', function (e) {
+    $(this).addClass('active');
+    $(this).siblings().removeClass('active');
+});
+
+$(document).ready(function() {
+    $(".navbar-nav li").removeClass('active');
+    $(".holt-tab").addClass('active');
+    $("#holt_initial").click();
+});
+
+function holt_click(parameter, tagName) {
+  var testQuery = '';
+  //        <!--Available_Bytes for windows and available for unix-->
+  //        <!--Percent_Idle_Time for windows and read_bytes for unix-->
+  
+  if(parameter === 'mem') testQuery = "SELECT holt_winters_with_fit(MEAN("+'available'+"),1000,10)/1000000000 AS "+tagName+" FROM mem where time > now() - 8h group by time(20s)";
+
+  else testQuery = "SELECT holt_winters_with_fit(MEAN("+parameter+"),100,10) AS "+tagName+" from netstat where time > now() - 8h GROUP BY time(20s)"
+  
+  console.debug(testQuery);
+  $(".chart").empty();
+  $(".y_axis").empty();
+  $(".legend").empty();
+  $(".slider").empty();
+
+  $("#prediction-loader").html("<img height='450px' src='/prediction-loader.png' />");
+
+    $.getJSON(_influxdb, {
+                db: 'telegraf',
+                q: testQuery
+            },
+            function(influxData) {
+              $('#prediction-loader').html('');
+
+              console.log('Inside callback!')
+              //console.debug(influxData)
+                graphObject = drawGraph(
+                        $('#holt_chart'),
+                        transformData(influxData, tagName),
+                        'stack',
+                        testQuery,
+                        null,
+                        true
+                );
+            }
+    );
+};
+</script>

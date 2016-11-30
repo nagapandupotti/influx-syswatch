@@ -1,0 +1,54 @@
+<div class="row">
+  <div class="col-md-12">
+    <div>
+      <div class="btn-group gap" role="group">
+        <button id="cpu_used" class="btn btn-default active" onclick="cpu_click('usage_user')">Available</button>
+        <button id="cpu_idle" class="btn btn-default" onclick="cpu_click('usage_idle')">Used</button>
+      </div>
+    </div>
+    <h2>CPU Usage</h2>
+    <div id="cpu_chart" style="white-space: nowrap;">
+      <%= erb :graph %>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+
+$('body').on('click', '.btn-group button', function (e) {
+    $(this).addClass('active');
+    $(this).siblings().removeClass('active');
+});
+
+$(document).ready(function() {
+    $(".navbar-nav li").removeClass('active');
+    $(".cpu-tab").addClass('active');
+    $("#cpu_used").click();
+});
+
+function cpu_click(parameter) {
+    var testQuery = "SELECT mean("+parameter+") FROM cpu WHERE time > now() - "+timeRange+" GROUP BY time("+groupTime+"), cpu";
+    var updateQuery = "SELECT mean("+parameter+") FROM cpu WHERE time > now() - "+groupTime+" GROUP BY time("+groupTime+"), cpu";
+    $(".chart").empty();
+    $(".y_axis").empty();
+    $(".legend").empty();
+
+    $.getJSON(_influxdb, {
+                db: 'telegraf',
+                q: testQuery
+            },
+            function(influxData) {
+                drawGraph(
+                        $('#cpu_chart'),
+                        transformData(influxData),
+                        'line',
+                        testQuery,
+                        updateQuery,
+                        false
+                );
+            }
+    );
+
+}; //end
+
+</script>
